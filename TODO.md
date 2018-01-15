@@ -36,6 +36,8 @@ Fix, misc:
 
 Do, features:
 
+* Save overview channel in server config, so we won't have to check every channel during start up 
+(takes time if server has many channels)
 * PokemonGoConfig entity for keeping track of current legendary bosses etc - things that may change on an
 instant, should be able to reconfigure these in runtime via admin tool.
 * !raid install needs to be made easier
@@ -50,6 +52,7 @@ so they can get their daily raid done quickly (maybe subscribe to an "area" inst
 
 -- next
 
+* Admin to send messages to when something happened they need to know about
 * Runtime signup statistics for each server, reset on server restart or start of next day, whichever comes first.
 * Move gyms to the database, use CSV files just to initialize and keep in synch?
 * Make it possible to change gyms in database via admin command (Zhorhn only)

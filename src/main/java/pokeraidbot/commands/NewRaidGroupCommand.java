@@ -282,6 +282,7 @@ public class NewRaidGroupCommand extends ConcurrencyAndConfigAwareCommand {
                         LOGGER.trace("Edit task done for now: " + infoMessageId);
                     }
                 } catch (InterruptedException | ExecutionException e) {
+                    // todo: if timeout, try again
                     throw new RuntimeException(e);
                 }
             }

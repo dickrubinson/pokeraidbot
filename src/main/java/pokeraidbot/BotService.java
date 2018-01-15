@@ -8,7 +8,6 @@ import com.jagrosh.jdautilities.commandclient.examples.PingCommand;
 import com.jagrosh.jdautilities.waiter.EventWaiter;
 import net.dv8tion.jda.core.*;
 import net.dv8tion.jda.core.entities.Game;
-import net.dv8tion.jda.core.exceptions.RateLimitedException;
 import net.dv8tion.jda.core.hooks.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +98,6 @@ public class BotService {
         client.setEmojis(Emotes.OK, "\uD83D\uDE2E", Emotes.ERROR);
         client.setPrefix("!raid ");
         client.setAlternativePrefix("!r ");
-        client.setGame(Game.of("Type !raid usage"));
         client.addCommands(
                 new WhatsNewCommand(serverConfigRepository, aggregateCommandListener, localeService),
                 new HelpManualCommand(localeService, serverConfigRepository, aggregateCommandListener),
@@ -165,7 +163,7 @@ public class BotService {
 
                     // set the game for when the bot is loading
                     .setStatus(OnlineStatus.DO_NOT_DISTURB)
-                    .setGame(Game.of("loading..."))
+                    .setGame(Game.playing("Type !raid usage"))
 
                     // Network-related settings
                     .setRequestTimeoutRetry(true)
@@ -186,7 +184,7 @@ public class BotService {
                 botInstance.addEventListener(extraListener);
                 LOGGER.info("Added extra event listener after initialization: " + extraListener);
             }
-        } catch (LoginException | RateLimitedException | InterruptedException e) {
+        } catch (LoginException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }

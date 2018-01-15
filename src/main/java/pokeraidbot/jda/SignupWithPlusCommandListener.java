@@ -1,6 +1,5 @@
 package pokeraidbot.jda;
 
-import main.BotServerMain;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.events.Event;
@@ -48,7 +47,7 @@ public class SignupWithPlusCommandListener implements EventListener {
                 return;
             }
 
-            final String rawContent = guildMessageReceivedEvent.getMessage().getRawContent();
+            final String rawContent = guildMessageReceivedEvent.getMessage().getContentRaw();
             if (rawContent.matches(plusXRegExp)) {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("It would seem this is a + command to add signups: " + rawContent);

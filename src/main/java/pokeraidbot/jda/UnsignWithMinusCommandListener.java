@@ -1,6 +1,5 @@
 package pokeraidbot.jda;
 
-import main.BotServerMain;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.events.Event;
@@ -49,7 +48,7 @@ public class UnsignWithMinusCommandListener implements EventListener {
                 return;
             }
 
-            final String rawContent = guildMessageReceivedEvent.getMessage().getRawContent();
+            final String rawContent = guildMessageReceivedEvent.getMessage().getContentRaw();
             if (rawContent.matches(minusXRegExp)) {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("It would seem this is a - command to remove signups: " + rawContent);

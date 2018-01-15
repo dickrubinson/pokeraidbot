@@ -8,6 +8,7 @@ import net.dv8tion.jda.core.entities.User;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pokeraidbot.Utils;
 import pokeraidbot.domain.config.ClockService;
 import pokeraidbot.domain.config.LocaleService;
 import pokeraidbot.domain.errors.OverviewException;
@@ -21,7 +22,6 @@ import pokeraidbot.infrastructure.jpa.config.Config;
 import pokeraidbot.infrastructure.jpa.config.ServerConfigRepository;
 import pokeraidbot.infrastructure.jpa.raid.RaidGroup;
 
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.Locale;
 import java.util.Set;
@@ -115,29 +115,49 @@ public class RaidOverviewCommand extends ConcurrencyAndConfigAwareCommand {
                     LOGGER.trace("Thread: " + Thread.currentThread().getId() +
                             " - Updating for server " + config.getServer() + " with ID " + messageId);
                 }
-                final Message message = messageChannel.getMessageById(messageId).complete();
-                if (config.getOverviewMessageId() != null &&
-                        message != null) {
-                    final String messageString = getOverviewMessage(config,
-                            localeService, raidRepository, clockService, locale);
-                    messageChannel.editMessageById(messageId,
-                            messageString)
-                            .queue(m -> {
-                            }, m -> {
-                                LOGGER.warn(m.getClass().getSimpleName() + " thrown: " + m.getMessage());
-                                if (m instanceof SocketTimeoutException) {
-                                    LOGGER.debug("We got a socket timeout, which could be that the server is temporarily " +
-                                            "down. Let's not clean up things before we know if it works or not.");
-                                }
-                            });
-                    return true;
-                } else {
-                    LOGGER.warn("Could not find message for overview - config ID: " +
-                            config.getOverviewMessageId() + ", message: " +
-                            (message == null ? "null" : message.getId()) + ". Cleaning up...");
-                    cleanUp(config, messageId, serverConfigRepository,
-                            messageChannel);
-                    return false;
+                // todo: refactor - be able to create the threads that do updating without actually having the message.
+                // (be able to send message ID in which could either be existing ID, or null if there is no message -
+                // which would mean it needs to be created)
+                // Instead, when thread tries to work its magic:
+                // * if it can't create the message due to issues, clean up thread and respond with error to user
+                // * if it can't find the message clean up in database
+                // * if getting the message times out, skip and try again in 60 sec
+                // * if we can't edit the message due to permissions, print in logs and clean database (message admin of server?)
+                // * if we can't edit the message due to timeout, skip and try again in 60 sec
+                Message message = null;
+                try {
+                    message = messageChannel.getMessageById(messageId).complete();
+                    if (config.getOverviewMessageId() != null &&
+                            message != null) {
+                        final String messageString = getOverviewMessage(config,
+                                localeService, raidRepository, clockService, locale);
+                        messageChannel.editMessageById(messageId,
+                                messageString)
+                                .queue(m -> {
+                                }, m -> {
+                                    LOGGER.warn(m.getClass().getSimpleName() + " thrown: " + m.getMessage());
+                                    if (m instanceof SocketTimeoutException) {
+                                        LOGGER.debug("We got a socket timeout, which could be that the server is temporarily " +
+                                                "down. Let's not clean up things before we know if it works or not.");
+                                    }
+                                });
+                        return true;
+                    } else {
+                        LOGGER.warn("Could not find message for overview - config ID: " +
+                                config.getOverviewMessageId() + ", message: " +
+                                (message == null ? "null" : message.getId()) + ". Cleaning up...");
+                        cleanUp(config, messageId, serverConfigRepository,
+                                messageChannel);
+                        return false;
+                    }
+                } catch (Throwable t) {
+                    if (Utils.isExceptionOrCauseNetworkIssues(t)) {
+                        return true; // Just try again later
+                    } else {
+                        cleanUp(config, messageId, serverConfigRepository,
+                                messageChannel);
+                        throw t;
+                    }
                 }
             };
             boolean overviewOk = true;
@@ -146,8 +166,7 @@ public class RaidOverviewCommand extends ConcurrencyAndConfigAwareCommand {
                     overviewOk = executorService.submit(editTask).get();
                 } catch (InterruptedException | ExecutionException | OverviewException e) {
                     LOGGER.warn("Exception when running edit task: " + e.getMessage() + ".");
-                    if (e.getCause() != null &&
-                            (e.getCause() instanceof SocketException || e.getCause() instanceof SocketTimeoutException)) {
+                    if (Utils.isExceptionOrCauseNetworkIssues(e)) {
                         LOGGER.info("Exception was due to timeout, so trying again later. Could be temporary.");
                         overviewOk = true;
                     } else {
